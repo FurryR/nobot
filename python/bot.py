@@ -19,9 +19,7 @@ class Bot:
         """
         idx = self.__buffer.find(b"{")  # 判断字符是否为 payload 开头
         if idx != -1 and self.__buffer.endswith(b"\n"):  # 判断报文是否完整
-            # ev: Any = json.loads(self.__buffer[idx:-1])  # 尝试解析事件
-            ev = self.__buffer[idx:-1]
-            # 以下是解析成功的情况
+            ev = self.__buffer[idx:-1]  # 临时存放缓冲区
             self.__buffer = b""  # 清空缓冲区
             conn.sendall(
                 b"HTTP/1.1 200 OK\r\nConnection: Close\r\nContent-Type: text/html\r\n\r\n"
@@ -38,12 +36,6 @@ class Bot:
         payload: bytes = b"",
         headers: dict[str, str] = {"Content-Type": "application/json"},
     ) -> bytes:
-        """
-
-        Args:
-            path (str):
-
-        """
         """访问API。
 
         Args:
@@ -55,24 +47,23 @@ class Bot:
         Returns:
             bytes: 服务器返回的内容。
         """
-        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # 打开连接
-        conn.connect((self.__api[0], self.__api[1])) # 连接API网址
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 打开连接
+        conn.connect((self.__api[0], self.__api[1]))  # 连接API网址
         conn.sendall(
             f"{action} {path} HTTP/1.1\r\nConnection: Close\r\nHost: {self.__api[0]}\r\n{''.join(map(lambda key: (key + ': ' + headers[key]), headers.keys()))}\r\n\r\n".encode(
                 encoding="utf-8"
             )
             + payload
-        ) # 发送报文
-        buffer: bytes = b"" # 初始化buffer
-        r: bytes = b"" # 初始化临时值
-        while True: # 获取回复报文
-            r = conn.recv(1024) # 获取报文
-            if r == b"": # 连接已关闭
-                break # 跳出
+        )  # 发送报文
+        buffer, r = b"", b""  # 初始化buffer和临时值
+        while True:  # 获取回复报文
+            r = conn.recv(1024)  # 获取报文
+            if r == b"":
+                break  # 连接已关闭则跳出
             else:
-                buffer += r # buffer追加临时值
-        conn.close() # 关闭连接
-        return buffer # 返回buffer
+                buffer += r  # buffer追加临时值
+        conn.close()  # 关闭连接
+        return buffer  # 返回buffer
 
     def __init__(
         self, server_ip: tuple[str, int], api_ip: tuple[str, int], max_conn: int = 100
@@ -84,12 +75,11 @@ class Bot:
             api_ip (tuple[str, int]): 发送API请求的IP和端口。
             max_conn (int, optional): 最大连接数。 默认为100。
         """
-        self.__buffer = b""  # 初始化buffer
+        self.__buffer, self.__api = b"", api_ip  # 初始化buffer并保存 API IP 供 get 使用。
         self.__server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 新建socket
         self.__server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.__server.bind((server_ip[0], server_ip[1]))  # 绑定到指定的IP和端口。
         self.__server.listen(max_conn)  # 设定最大连接数。
-        self.__api = api_ip  # 保存 API IP 供 get 使用。
 
     def receive(self) -> bytes:
         """获得一个事件。
@@ -99,11 +89,16 @@ class Bot:
             bytes: 事件内容。
         """
         (conn, _) = self.__server.accept()  # 接受反向连接
+        r = b"";
         while True:  # 无限循环到成功获得事件
-            self.__buffer += conn.recv(1024)  # 接收1024个byte
-            tmp: Optional[bytes] = self.__process_ev(conn)  # 尝试解析事件
-            if tmp != None:  # 不是None的情况
-                return tmp  # 返回事件
+            r = conn.recv(1024)
+            if r == b"":
+                break
+            else:
+                self.__buffer += r  # 接收1024个byte
+                tmp: Optional[bytes] = self.__process_ev(conn)  # 尝试解析事件
+                if tmp != None:  # 不是None的情况
+                    return tmp  # 返回事件
 
     def close(self) -> None:
         """停止服务器。"""
