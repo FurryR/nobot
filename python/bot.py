@@ -21,7 +21,7 @@ class Bot:
             ev = self.__buffer[idx:-1]  # 临时存放缓冲区
             self.__buffer = b""  # 清空缓冲区
             conn.sendall(
-                b"HTTP/1.1 200 OK\r\nConnection: Close\r\nContent-Type: text/html\r\n\r\n"
+                b"HTTP/1.1 200 OK\r\nConnection: Close\r\n\r\n"
             )  # 发送应答报文
             conn.close()  # 关闭连接
             return ev  # 返回事件内容
