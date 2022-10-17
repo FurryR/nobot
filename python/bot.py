@@ -1,6 +1,5 @@
 # coding=utf-8
 import socket
-from typing import Optional
 
 
 class Bot:
@@ -8,14 +7,14 @@ class Bot:
     __buffer: bytes
     __api: tuple[str, str]
 
-    def __process_ev(self, conn: socket.socket) -> Optional[bytes]:
+    def __process_ev(self, conn: socket.socket) -> bytes:
         """尝试处理事件。
 
         Args:
             conn (socket.socket): 客户端的连接。
 
         Returns:
-            Optional[bytes]: 如果获取事件成功，则返回事件的报文，否则返回None。
+            bytes: 如果获取事件成功，则返回事件的报文，否则返回空字符串。
         """
         idx = self.__buffer.find(b"{")  # 判断字符是否为 payload 开头
         if idx != -1 and self.__buffer.endswith(b"\n"):  # 判断报文是否完整
@@ -27,7 +26,7 @@ class Bot:
             conn.close()  # 关闭连接
             return ev  # 返回事件内容
         else:
-            return None  # 解析失败，返回None
+            return b''  # 解析失败，返回空字符串
 
     def api(
         self,
@@ -50,18 +49,14 @@ class Bot:
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 打开连接
         conn.connect((self.__api[0], self.__api[1]))  # 连接API网址
         conn.sendall(
-            f"{action} {path} HTTP/1.1\r\nConnection: Close\r\nHost: {self.__api[0]}\r\n{''.join(map(lambda key: (key + ': ' + headers[key]), headers.keys()))}\r\n\r\n".encode(
+            f"{action} {path} HTTP/1.1\r\nConnection: Close\r\nHost: {self.__api[0]}\r\n{'\r\n'.join(map(lambda key: (key + ': ' + headers[key]), headers.keys()))}\r\n\r\n".encode(
                 encoding="utf-8"
             )
             + payload
         )  # 发送报文
         buffer, r = b"", b""  # 初始化buffer和临时值
-        while True:  # 获取回复报文
-            r = conn.recv(1024)  # 获取报文
-            if r == b"":
-                break  # 连接已关闭则跳出
-            else:
-                buffer += r  # buffer追加临时值
+        while r := conn.recv(1024):  # 获取回复报文
+            buffer += r  # buffer追加临时值
         conn.close()  # 关闭连接
         return buffer  # 返回buffer
 
@@ -83,22 +78,19 @@ class Bot:
 
     def receive(self) -> bytes:
         """获得一个事件。
-        注意：如果已经close，则行为未定义。
+        注意：如果已经close，则返回空字节串。
 
         Returns:
             bytes: 事件内容。
         """
         (conn, _) = self.__server.accept()  # 接受反向连接
-        r = b"";
-        while True:  # 无限循环到成功获得事件
-            r = conn.recv(1024)
-            if r == b"":
-                break
-            else:
-                self.__buffer += r  # 接收1024个byte
-                tmp: Optional[bytes] = self.__process_ev(conn)  # 尝试解析事件
-                if tmp != None:  # 不是None的情况
-                    return tmp  # 返回事件
+        r = b""
+        while r := conn.recv(1024):  # 无限循环到成功获得事件
+            self.__buffer += r  # 接收1024个byte
+            tmp: bytes = self.__process_ev(conn)  # 尝试解析事件
+            if tmp:  # 不是空字符串的情况
+                return tmp  # 返回事件
+        return b""
 
     def close(self) -> None:
         """停止服务器。"""
@@ -106,9 +98,3 @@ class Bot:
 
     def __del__(self) -> None:
         self.close()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self) -> bytes:
-        return self.receive()

@@ -8,8 +8,9 @@ import json
 from nobot import Bot
 
 
-bot = Bot(("127.0.0.1", 5701), ("127.0.0.1", 5700))
-for ev in bot:
+bot = Bot(("1.0.0.1", 5701), ("127.0.0.1", 5700))
+ev = b""
+while ev := bot.receive():
     print(json.loads(ev))
 ```
 
