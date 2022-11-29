@@ -94,6 +94,7 @@ class Bot:
 
     def close(self) -> None:
         """停止服务器。"""
+        self.__server.shutdown(socket.SHUT_RDWR)
         self.__server.close()
 
     def __del__(self) -> None:

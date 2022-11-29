@@ -24,8 +24,8 @@ typedef class Bot {
         buffer[buffer.size() - 1] == '\n') {
       std::string ret = buffer.substr(idx, buffer.length() - idx - 1);
       buffer.clear();
-      if (send(fd, "HTTP/1.1 200 OK\r\nConnection: Close\r\n\r\n",
-               39, 0) == -1) {
+      if (send(fd, "HTTP/1.1 200 OK\r\nConnection: Close\r\n\r\n", 39, 0) ==
+          -1) {
         ::close(fd);
         throw std::runtime_error("send failed");
       }
@@ -42,6 +42,7 @@ typedef class Bot {
    */
   void close() noexcept {
     if (server == -1) return;
+    shutdown(server, SHUT_RDWR);
     ::close(server);
     server = -1;
   }
@@ -65,8 +66,9 @@ typedef class Bot {
       arg += it->first + ": " + it->second + "\r\n";
     }
     std::string content =
-        action + " " + path + " HTTP/1.1\r\nHost: " + api_ip.first + "\r\nConnection: Close\r\n" +
-        arg.substr(0, arg.length() - 2) + "\r\n\r\n" + payload;
+        action + " " + path + " HTTP/1.1\r\nHost: " + api_ip.first +
+        "\r\nConnection: Close\r\n" + arg.substr(0, arg.length() - 2) +
+        "\r\n\r\n" + payload;
     if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
       throw std::runtime_error("socket failed");
     }
@@ -118,7 +120,7 @@ typedef class Bot {
    * @param max_conn 最大连接数。 默认为100。
    */
   Bot(const std::pair<std::string, uint16_t>& server_ip,
-      const std::pair<std::string, uint16_t>& api_ip, int max_conn = 100)
+      const std::pair<std::string, uint16_t>& api_ip, size_t max_conn = 100)
       : buffer(""), api_ip(api_ip) {
     sockaddr_in sin{};
     if ((server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
