@@ -20,13 +20,11 @@ class Bot:
         if idx != -1 and self.__buffer.endswith(b"\n"):  # 判断报文是否完整
             ev = self.__buffer[idx:-1]  # 临时存放缓冲区
             self.__buffer = b""  # 清空缓冲区
-            conn.sendall(
-                b"HTTP/1.1 200 OK\r\nConnection: Close\r\n\r\n"
-            )  # 发送应答报文
+            conn.sendall(b"HTTP/1.1 200 OK\r\nConnection: Close\r\n\r\n")  # 发送应答报文
             conn.close()  # 关闭连接
             return ev  # 返回事件内容
         else:
-            return b''  # 解析失败，返回空字符串
+            return b""  # 解析失败，返回空字符串
 
     def api(
         self,
@@ -49,7 +47,9 @@ class Bot:
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 打开连接
         conn.connect((self.__api[0], self.__api[1]))  # 连接API网址
         conn.sendall(
-            f"{action} {path} HTTP/1.1\r\nConnection: Close\r\nHost: {self.__api[0]}\r\n{'\r\n'.join(map(lambda key: (key + ': ' + headers[key]), headers.keys()))}\r\n\r\n".encode(
+            f"{action} {path} HTTP/1.1\r\nConnection: Close\r\nHost: {self.__api[0]}\r\n{{}}\r\n\r\n".format(
+                "\r\n".join(map(lambda key: f"{key}: {headers[key]}", headers.keys()))
+            ).encode(
                 encoding="utf-8"
             )
             + payload
